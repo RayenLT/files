@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Permanent Link Generator</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stats {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            border-left: 5px solid #2196f3;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+
+        .bulk-actions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 1px solid #dee2e6;
+        }
+
+        .bulk-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .bulk-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bulk-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .bulk-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .select-all-btn {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .delete-selected-btn {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+        }
+
+        .delete-all-btn {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .link-item {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .link-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .link-item.selected {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-color: #2196f3;
+        }
+
+        .link-checkbox {
+            margin-right: 15px;
+            margin-top: 5px;
+            transform: scale(1.3);
+            cursor: pointer;
+        }
+
+        .link-info {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .link-id {
+            font-weight: 700;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .link-details {
+            color: #666;
+            font-size: 14px;
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+
+        .link-details a {
+            color: #1976d2;
+            text-decoration: none;
+        }
+
+        .link-details a:hover {
+            text-decoration: underline;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+        }
+
+        .delete-btn {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        }
+
+        .no-links {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 50px;
+            font-size: 16px;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-buttons {
+            margin-top: 25px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .modal-confirm {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .modal-cancel {
+            background: linear-gradient(135deg, #9e9e9e 0%, #757575 100%);
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff40;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .bulk-controls { flex-direction: column; align-items: stretch; }
+            .bulk-btn { justify-content: center; }
+            .link-item { flex-direction: column; }
+            .link-checkbox { margin-bottom: 15px; }
+            .action-btn { margin: 5px 0 0 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙️ Admin Panel</h1>
+
+        <div class="stats">
+            <div class="stat-number" id="totalLinks">{{ links|length }}</div>
+            <div>Total Links Created</div>
+        </div>
+
+        {% if links %}
+            <div class="bulk-actions">
+                <h3 style="margin: 0 0 15px 0; color: #333;">Bulk Operations</h3>
+                <div class="bulk-controls">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="selectAllCheckbox" style="transform: scale(1.2);">
+                        Select All
+                    </label>
+                    <button class="bulk-btn delete-selected-btn" id="deleteSelectedBtn" disabled>
+                        🗑️ Delete Selected
+                        <span class="spinner" id="deleteSelectedSpinner"></span>
+                    </button>
+                    <button class="bulk-btn delete-all-btn" id="deleteAllBtn">
+                        💥 Delete All
+                        <span class="spinner" id="deleteAllSpinner"></span>
+                    </button>
+                    <div style="margin-left: auto; color: #666; font-size: 14px;" id="selectedCount">0 selected</div>
+                </div>
+            </div>
+
+            <div id="linksContainer">
+                {% for link_id, link_data in links.items() %}
+                <div class="link-item" data-link-id="{{ link_id }}">
+                    <input type="checkbox" class="link-checkbox" data-link-id="{{ link_id }}">
+                    <div class="link-info">
+                        <div class="link-id">{{ link_id }}</div>
+                        <div class="link-details">
+                            <strong>Created:</strong> {{ link_data.created_at[:19] }}<br>
+                            <strong>Downloads:</strong> {{ link_data.access_count }}<br>
+                            <strong>Link:</strong> <a href="{{ request.host_url }}download/{{ link_id }}" target="_blank">{{ request.host_url }}download/{{ link_id }}</a>
+                            {% if link_data.file_info %}
+                            <br><strong>File:</strong> {{ link_data.file_info.filename }} ({{ (link_data.file_info.file_size / 1024 / 1024) | round(2) }} MB)
+                            {% endif %}
+                        </div>
+                    </div>
+                    <button class="action-btn edit-btn" data-link-id="{{ link_id }}">✏️ Edit</button>
+                    <button class="action-btn delete-btn" data-link-id="{{ link_id }}">🗑️ Delete</button>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-links">
+                📭 No links created yet.<br>
+                <a href="/" style="color: #667eea; text-decoration: none;">Create your first link →</a>
+            </div>
+        {% endif %}
+
+        <div class="back-link">
+            <a href="/">← Back to Link Generator</a>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Confirm Action</h3>
+            <p id="modalMessage">Are you sure?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-confirm" id="modalConfirm">Confirm</button>
+                <button class="modal-btn modal-cancel" id="modalCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Link ID</h3>
+            <p>Enter a new custom name:</p>
+            <input type="text" id="editLinkId" placeholder="Enter new link ID" 
+                   style="width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+            <div class="modal-buttons">
+                <button class="modal-btn modal-confirm" id="editConfirm">💾 Save</button>
+                <button class="modal-btn modal-cancel" id="editCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedLinks = new Set();
+        let currentAction = null;
+        let currentEditLinkId = null;
+
+        const elements = {
+            selectAllCheckbox: document.getElementById('selectAllCheckbox'),
+            deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
+            deleteAllBtn: document.getElementById('deleteAllBtn'),
+            selectedCount: document.getElementById('selectedCount'),
+            totalLinks: document.getElementById('totalLinks'),
+            confirmModal: document.getElementById('confirmModal'),
+            editModal: document.getElementById('editModal'),
+            editLinkId: document.getElementById('editLinkId')
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', initializeEventListeners);
+
+        function initializeEventListeners() {
+            // Select all functionality
+            elements.selectAllCheckbox.addEventListener('change', function() {
+                document.querySelectorAll('.link-checkbox').forEach(cb => {
+                    cb.checked = this.checked;
+                    updateLinkSelection(cb);
+                });
+                updateSelectedSet();
+            });
+
+            // Individual checkboxes
+            document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('link-checkbox')) {
+                    updateLinkSelection(e.target);
+                    updateSelectedSet();
+                }
+            });
+
+            // Bulk actions
+            elements.deleteSelectedBtn.addEventListener('click', () => showConfirmModal('deleteSelected'));
+            elements.deleteAllBtn.addEventListener('click', () => showConfirmModal('deleteAll'));
+
+            // Individual actions
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('delete-btn')) {
+                    const linkId = e.target.getAttribute('data-link-id');
+                    showConfirmModal('deleteSingle', linkId);
+                } else if (e.target.classList.contains('edit-btn')) {
+                    const linkId = e.target.getAttribute('data-link-id');
+                    showEditModal(linkId);
+                }
+            });
+
+            // Modal handlers
+            document.getElementById('modalConfirm').addEventListener('click', executeAction);
+            document.getElementById('modalCancel').addEventListener('click', hideConfirmModal);
+            document.getElementById('editConfirm').addEventListener('click', saveEdit);
+            document.getElementById('editCancel').addEventListener('click', hideEditModal);
+
+            // Close modals on outside click
+            window.addEventListener('click', function(e) {
+                if (e.target === elements.confirmModal) hideConfirmModal();
+                if (e.target === elements.editModal) hideEditModal();
+            });
+        }
+
+        function updateLinkSelection(checkbox) {
+            const linkItem = checkbox.closest('.link-item');
+            linkItem.classList.toggle('selected', checkbox.checked);
+        }
+
+        function updateSelectedSet() {
+            selectedLinks.clear();
+            document.querySelectorAll('.link-checkbox:checked').forEach(cb => {
+                selectedLinks.add(cb.getAttribute('data-link-id'));
+            });
+
+            // Update UI
+            elements.selectedCount.textContent = `${selectedLinks.size} selected`;
+            elements.deleteSelectedBtn.disabled = selectedLinks.size === 0;
+
+            // Update select all checkbox
+            const total = document.querySelectorAll('.link-checkbox').length;
+            const selected = selectedLinks.size;
+
+            if (selected === 0) {
+                elements.selectAllCheckbox.indeterminate = false;
+                elements.selectAllCheckbox.checked = false;
+            } else if (selected === total) {
+                elements.selectAllCheckbox.indeterminate = false;
+                elements.selectAllCheckbox.checked = true;
+            } else {
+                elements.selectAllCheckbox.indeterminate = true;
+            }
+        }
+
+        function showConfirmModal(action, linkId = null) {
+            currentAction = { type: action, linkId };
+            const modal = elements.confirmModal;
+            const title = document.getElementById('modalTitle');
+            const message = document.getElementById('modalMessage');
+
+            switch (action) {
+                case 'deleteSelected':
+                    title.textContent = 'Delete Selected Links';
+                    message.textContent = `Delete ${selectedLinks.size} selected link(s)? This cannot be undone.`;
+                    break;
+                case 'deleteAll':
+                    const total = document.querySelectorAll('.link-item').length;
+                    title.textContent = 'Delete All Links';
+                    message.textContent = `Delete ALL ${total} link(s)? This cannot be undone.`;
+                    break;
+                case 'deleteSingle':
+                    title.textContent = 'Delete Link';
+                    message.textContent = `Delete link "${linkId}"? This cannot be undone.`;
+                    break;
+            }
+
+            modal.style.display = 'block';
+        }
+
+        function hideConfirmModal() {
+            elements.confirmModal.style.display = 'none';
+            currentAction = null;
+        }
+
+        function showEditModal(linkId) {
+            currentEditLinkId = linkId;
+            elements.editLinkId.value = linkId;
+            elements.editModal.style.display = 'block';
+        }
+
+        function hideEditModal() {
+            elements.editModal.style.display = 'none';
+            currentEditLinkId = null;
+        }
+
+        async function executeAction() {
+            hideConfirmModal();
+
+            try {
+                switch (currentAction.type) {
+                    case 'deleteSelected':
+                        await deleteSelectedLinks();
+                        break;
+                    case 'deleteAll':
+                        await deleteAllLinks();
+                        break;
+                    case 'deleteSingle':
+                        await deleteSingleLink(currentAction.linkId);
+                        break;
+                }
+            } catch (error) {
+                alert('Operation failed: ' + error.message);
+            }
+        }
+
+        async function deleteSelectedLinks() {
+            const spinner = document.getElementById('deleteSelectedSpinner');
+            const btn = elements.deleteSelectedBtn;
+
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+
+            try {
+                const promises = Array.from(selectedLinks).map(linkId =>
+                    fetch(`/admin/delete/${linkId}`, { method: 'DELETE' })
+                );
+
+                const results = await Promise.allSettled(promises);
+                let deleted = 0;
+
+                results.forEach((result, index) => {
+                    const linkId = Array.from(selectedLinks)[index];
+                    if (result.status === 'fulfilled' && result.value.ok) {
+                        document.querySelector(`[data-link-id="${linkId}"]`)?.remove();
+                        deleted++;
+                    }
+                });
+
+                selectedLinks.clear();
+                updateSelectedSet();
+                updateTotalCount();
+
+                alert(`${deleted} link(s) deleted successfully!`);
+            } finally {
+                spinner.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteAllLinks() {
+            const spinner = document.getElementById('deleteAllSpinner');
+            const btn = elements.deleteAllBtn;
+
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+
+            try {
+                const allLinks = Array.from(document.querySelectorAll('.link-item')).map(
+                    item => item.getAttribute('data-link-id')
+                );
+
+                const promises = allLinks.map(linkId =>
+                    fetch(`/admin/delete/${linkId}`, { method: 'DELETE' })
+                );
+
+                const results = await Promise.allSettled(promises);
+                let deleted = 0;
+
+                results.forEach((result, index) => {
+                    if (result.status === 'fulfilled' && result.value.ok) {
+                        document.querySelector(`[data-link-id="${allLinks[index]}"]`)?.remove();
+                        deleted++;
+                    }
+                });
+
+                selectedLinks.clear();
+                updateSelectedSet();
+                updateTotalCount();
+
+                if (deleted === allLinks.length) {
+                    location.reload(); // Refresh to show "no links" message
+                } else {
+                    alert(`${deleted} link(s) deleted successfully!`);
+                }
+            } finally {
+                spinner.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteSingleLink(linkId) {
+            try {
+                const response = await fetch(`/admin/delete/${linkId}`, { method: 'DELETE' });
+
+                if (response.ok) {
+                    document.querySelector(`[data-link-id="${linkId}"]`)?.remove();
+                    selectedLinks.delete(linkId);
+                    updateSelectedSet();
+                    updateTotalCount();
+                    alert('Link deleted successfully!');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Delete failed');
+                }
+            } catch (error) {
+                alert('Failed to delete link: ' + error.message);
+            }
+        }
+
+        async function saveEdit() {
+            const newLinkId = elements.editLinkId.value.trim();
+
+            if (!newLinkId) {
+                alert('Please enter a link ID');
+                return;
+            }
+
+            if (!/^[a-zA-Z0-9-_]{1,50}$/.test(newLinkId)) {
+                alert('Invalid format. Use only letters, numbers, hyphens, and underscores (1-50 chars)');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/edit/${currentEditLinkId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_link_id: newLinkId })
+                });
+
+                if (response.ok) {
+                    // Update DOM
+                    const linkItem = document.querySelector(`[data-link-id="${currentEditLinkId}"]`);
+                    if (linkItem) {
+                        linkItem.setAttribute('data-link-id', newLinkId);
+                        linkItem.querySelector('.link-id').textContent = newLinkId;
+                        linkItem.querySelector('.link-checkbox').setAttribute('data-link-id', newLinkId);
+                        linkItem.querySelector('.edit-btn').setAttribute('data-link-id', newLinkId);
+                        linkItem.querySelector('.delete-btn').setAttribute('data-link-id', newLinkId);
+
+                        // Update download link
+                        const downloadLink = linkItem.querySelector('.link-details a');
+                        const newUrl = `${location.origin}/download/${newLinkId}`;
+                        downloadLink.href = newUrl;
+                        downloadLink.textContent = newUrl;
+                    }
+
+                    hideEditModal();
+                    alert('Link ID updated successfully!');
+                } else {
+                    const error = await response.json();
+                    alert('Update failed: ' + (error.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Update failed: ' + error.message);
+            }
+        }
+
+        function updateTotalCount() {
+            const count = document.querySelectorAll('.link-item').length;
+            elements.totalLinks.textContent = count;
+
+            if (count === 0) {
+                document.getElementById('linksContainer').innerHTML = 
+                    '<div class="no-links">📭 No links created yet.<br><a href="/" style="color: #667eea; text-decoration: none;">Create your first link →</a></div>';
+                document.querySelector('.bulk-actions').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

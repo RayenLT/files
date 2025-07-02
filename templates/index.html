@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permanent Link Generator</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        input[type="url"], input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        input[type="url"]:focus, input[type="text"]:focus {
+            border-color: #667eea;
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input:invalid {
+            border-color: #dc3545;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result, .error {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            word-wrap: break-word;
+        }
+
+        .result {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border-left: 5px solid #28a745;
+        }
+
+        .error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f1c2c7 100%);
+            border-left: 5px solid #dc3545;
+        }
+
+        .copy-btn {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            margin-top: 15px;
+            padding: 10px 20px;
+            width: auto;
+            min-width: 120px;
+        }
+
+        .small-text {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .admin-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .admin-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .admin-link a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 12px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 6px;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: bold;
+            color: #333;
+            z-index: 1;
+        }
+
+        .validation-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 20px; }
+            h1 { font-size: 1.7rem; }
+            .admin-link { position: static; text-align: center; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="admin-link">
+            <a href="/admin">⚙️ Admin</a>
+        </div>
+
+        <h1>🔗 Permanent Link Generator</h1>
+        <p class="subtitle">Convert temporary download links into permanent ones</p>
+
+        <form id="linkForm" novalidate>
+            <div class="form-group">
+                <label for="temp_url">Temporary Download URL *</label>
+                <input type="url" id="temp_url" name="temp_url" required
+                       placeholder="https://example.com/temp-download-link">
+                <div class="validation-error" id="url-error">Please enter a valid URL</div>
+            </div>
+
+            <div class="form-group">
+                <label for="custom_name">Custom Name (Optional)</label>
+                <input type="text" id="custom_name" name="custom_name"
+                       placeholder="my-file" pattern="^[a-zA-Z0-9-_]{1,50}$">
+                <div class="small-text">Only letters, numbers, hyphens, and underscores (1-50 characters)</div>
+                <div class="validation-error" id="name-error">Invalid custom name format</div>
+            </div>
+
+            <button type="submit" id="submit-btn">Generate Permanent Link</button>
+        </form>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p id="loading-text">Processing your link...</p>
+            <div class="progress-container">
+                <div class="progress-bar"></div>
+                <div class="progress-text">0%</div>
+            </div>
+            <p id="progress-info" style="color: #666; font-size: 14px;"></p>
+        </div>
+
+        <div id="result" class="result">
+            <h3>✅ Success! Permanent Link Created</h3>
+            <p><strong>Your permanent download link:</strong></p>
+            <p><a href="#" id="permanent-link" target="_blank"></a></p>
+            <button class="copy-btn" onclick="copyToClipboard()">📋 Copy Link</button>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                <p><strong>Filename:</strong> <span id="filename"></span></p>
+                <p><strong>File Size:</strong> <span id="file-size"></span></p>
+                <p><a href="#" id="stats-link">📊 View Statistics</a></p>
+            </div>
+        </div>
+
+        <div id="error" class="error">
+            <h3>❌ Error</h3>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('linkForm');
+        const submitBtn = document.getElementById('submit-btn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const loadingText = document.getElementById('loading-text');
+        const progressInfo = document.getElementById('progress-info');
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const tempUrl = document.getElementById('temp_url').value.trim();
+            const customName = document.getElementById('custom_name').value.trim();
+
+            if (!tempUrl) {
+                document.getElementById('url-error').style.display = 'block';
+                return;
+            }
+
+            // Hide previous results and errors
+            result.style.display = 'none';
+            document.getElementById('url-error').style.display = 'none';
+            document.getElementById('name-error').style.display = 'none';
+
+            // Show loading
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+
+            try {
+                loadingText.textContent = 'Processing your link...';
+                progressInfo.textContent = 'Downloading and uploading file to GitHub...';
+
+                const formData = new FormData();
+                formData.append('temp_url', tempUrl);
+                if (customName) {
+                    formData.append('custom_name', customName);
+                }
+
+                const response = await fetch('/create', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Success
+                    document.getElementById('permanent-link').href = data.permanent_url;
+                    document.getElementById('permanent-link').textContent = data.permanent_url;
+                    document.getElementById('filename').textContent = data.filename;
+                    document.getElementById('file-size').textContent = formatFileSize(data.file_size);
+                    document.getElementById('stats-link').href = `/stats/${data.link_id}`;
+
+                    result.style.display = 'block';
+                    form.reset();
+                } else {
+                    // Error
+                    alert('Error: ' + (data.error || 'Unknown error occurred'));
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Network error occurred. Please try again.');
+            } finally {
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+
+        function formatFileSize(bytes) {
+            if (!bytes) return 'Unknown';
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function copyToClipboard() {
+            const link = document.getElementById('permanent-link').href;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = link;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
