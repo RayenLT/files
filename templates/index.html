@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permanent Link Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="url"], input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="url"]:focus, input[type="text"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            touch-action: manipulation;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e8;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+            display: none;
+            word-wrap: break-word;
+        }
+        .error {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #ffe8e8;
+            border-radius: 5px;
+            border-left: 4px solid #f44336;
+            display: none;
+            word-wrap: break-word;
+        }
+        .copy-btn {
+            background-color: #2196F3;
+            margin-top: 10px;
+            padding: 8px 16px;
+            width: auto;
+            min-width: 100px;
+        }
+        .copy-btn:hover {
+            background-color: #1976D2;
+        }
+        .small-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .admin-link {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+        .admin-link a {
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .admin-link a:hover {
+            background-color: #f0f0f0;
+            border-color: #999;
+            color: #333;
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 15px;
+                margin-top: 10px;
+            }
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 10px;
+            }
+            .admin-link {
+                position: static;
+                text-align: center;
+                margin-bottom: 15px;
+            }
+            .admin-link a {
+                display: inline-block;
+                width: auto;
+            }
+            input[type="url"], input[type="text"] {
+                padding: 14px;
+                font-size: 16px;
+            }
+            button {
+                padding: 14px 20px;
+                font-size: 16px;
+            }
+            .copy-btn {
+                width: 100%;
+                margin-top: 15px;
+            }
+            .result, .error {
+                padding: 12px;
+                font-size: 14px;
+            }
+            .result a, .error a {
+                word-break: break-all;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 12px;
+                border-radius: 5px;
+            }
+            h1 {
+                font-size: 1.3rem;
+            }
+            input[type="url"], input[type="text"] {
+                padding: 12px;
+            }
+            button {
+                padding: 12px 15px;
+            }
+        }
+
+        /* Progress bar styles */
+        .progress-container {
+            width: 100%;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            height: 20px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #4CAF50;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            transition: width 0.1s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            border-radius: 5px;
+        }
+
+        #progressText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: black;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="admin-link">
+            <a href="/admin">Admin Panel</a>
+        </div>
+        <h1>🔗 Permanent Link Generator</h1>
+        <p style="text-align: center; color: #666;">Convert temporary download links into permanent ones</p>
+
+        <form id="linkForm">
+            <div class="form-group">
+                <label for="temp_url">Temporary Download URL:</label>
+                <input type="url" id="temp_url" name="temp_url" required
+                       placeholder="https://example.com/temp-download-link">
+            </div>
+
+            <div class="form-group">
+                <label for="custom_name">Custom Name (Optional):</label>
+                <input type="text" id="custom_name" name="custom_name"
+                       placeholder="my-file" pattern="[a-zA-Z0-9-_]+">
+                <div class="small-text">Only letters, numbers, hyphens, and underscores allowed</div>
+            </div>
+
+            <button type="submit">Generate Permanent Link</button>
+        </form>
+
+        <div id="loading" style="display: none; text-align: center; margin-top: 20px;">
+            <div class="spinner"></div>
+            <p id="loadingText">Processing your link...</p>
+
+            <!-- Progress Bar Container -->
+            <div class="progress-container">
+                <div class="progress-bar" id="progressFill">
+                    <span id="progressText"></span>
+                </div>
+            </div>
+            <p id="progressStats" style="margin-top: 5px; color: #666; font-size: 14px;"></p>
+
+            <div id="progressInfo" style="margin-top: 10px; color: #666; font-size: 14px;">
+                <p>⏱️ Large files may take several minutes to process</p>
+            </div>
+        </div>
+
+        <div id="result" class="result">
+            <h3>✅ File Downloaded & Permanent Link Created!</h3>
+            <p><strong>Your permanent download link:</strong></p>
+            <p><a href="#" id="permanent-link" target="_blank"></a></p>
+            <button class="copy-btn" onclick="copyToClipboard()">Copy Link</button>
+            <p><strong>Original URL:</strong> <span id="original-url"></span></p>
+            <p><strong>Filename:</strong> <span id="filename"></span></p>
+            <p><strong>File Size:</strong> <span id="file-size"></span> bytes</p>
+            <p><a href="#" id="stats-link">View Statistics</a></p>
+        </div>
+
+        <div id="error" class="error">
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('linkForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            const submitButton = this.querySelector('button[type="submit"]');
+            const loadingDiv = document.getElementById('loading');
+
+            // Hide previous results and show loading
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            submitButton.textContent = 'Processing... (this may take several minutes for large files)';
+            submitButton.disabled = true;
+
+            // Initialize progress bar
+            resetProgress();
+            startProgressTracking();
+
+            let timeoutId;
+
+            try {
+                console.log('Submitting form to /create');
+
+                // Set a longer timeout for large file uploads
+                const controller = new AbortController();
+                timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minute timeout
+
+                const response = await fetch('/create', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+                // Get response text first
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+
+                // Parse JSON from response text
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('JSON parse error:', jsonError);
+                    resetProgress();
+                    loadingDiv.style.display = 'none';
+                    throw new Error('Invalid JSON response: ' + responseText.substring(0, 100));
+                }
+
+                console.log('Parsed response data:', data);
+
+                // Check if response is ok
+                if (!response.ok) {
+                    resetProgress();
+                    loadingDiv.style.display = 'none';
+                    document.getElementById('error-message').textContent = data.error || `HTTP ${response.status}: ${response.statusText}`;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                if (data.permanent_url) {
+                    // Complete the progress bar with smooth animation
+                    completeProgress();
+
+                    // Show result after a brief delay to let progress complete
+                    setTimeout(() => {
+                        loadingDiv.style.display = 'none';
+                        errorDiv.style.display = 'none';
+
+                        document.getElementById('permanent-link').href = data.permanent_url;
+                        document.getElementById('permanent-link').textContent = data.permanent_url;
+                        document.getElementById('filename').textContent = data.filename || 'Unknown';
+                        document.getElementById('file-size').textContent = (data.file_size || 0).toLocaleString();
+                        document.getElementById('stats-link').href = '/stats/' + data.link_id;
+
+                        resultDiv.style.display = 'block';
+
+                        // Scroll to result
+                        resultDiv.scrollIntoView({ behavior: 'smooth' });
+                    }, 800);
+                } else {
+                    // Reset progress bar on error
+                    resetProgress();
+                    loadingDiv.style.display = 'none';
+
+                    // Show error
+                    document.getElementById('error-message').textContent = data.error || 'An error occurred';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+
+                // Reset progress on error
+                resetProgress();
+                loadingDiv.style.display = 'none';
+
+                if (error.name === 'AbortError') {
+                    document.getElementById('error-message').textContent = 'Request timed out. Please try again with a smaller file or check your internet connection.';
+                } else {
+                    document.getElementById('error-message').textContent = 'Network error: ' + error.message;
+                }
+                errorDiv.style.display = 'block';
+            } finally {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                submitButton.textContent = 'Generate Permanent Link';
+                submitButton.disabled = false;
+            }
+        });
+
+        function copyToClipboard() {
+            const link = document.getElementById('permanent-link').textContent;
+            navigator.clipboard.writeText(link).then(function() {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = originalText, 2000);
+            });
+        }
+
+        let progressInterval;
+        let startTime;
+        let currentProgress = 0;
+
+        function startProgressTracking() {
+            startTime = Date.now();
+            currentProgress = 0;
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressStats = document.getElementById('progressStats');
+
+            // Ensure elements exist
+            if (!progressFill || !progressText || !progressStats) {
+                console.error('Progress elements not found');
+                return;
+            }
+
+            // Immediately start showing progress
+            progressFill.style.width = '0%';
+            progressText.textContent = 'Starting...';
+            progressStats.textContent = 'Initializing...';
+
+            progressInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+
+                // More realistic progress simulation with better timing
+                let progressIncrement = 0;
+                let statusText = '';
+                let targetProgress = 95; // Cap at 95% until server responds
+
+                if (currentProgress < 10) {
+                    progressIncrement = 2 + Math.random() * 3; // Quick start
+                    statusText = 'Connecting to server...';
+                } else if (currentProgress < 25) {
+                    progressIncrement = 1 + Math.random() * 2; // File analysis
+                    statusText = 'Analyzing file...';
+                } else if (currentProgress < 50) {
+                    progressIncrement = 0.8 + Math.random() * 1.5; // Download phase
+                    statusText = 'Downloading file...';
+                } else if (currentProgress < 70) {
+                    progressIncrement = 0.5 + Math.random() * 1; // GitHub operations
+                    statusText = 'Creating GitHub release...';
+                } else if (currentProgress < 85) {
+                    progressIncrement = 0.3 + Math.random() * 0.8; // Upload phase
+                    statusText = 'Uploading to GitHub...';
+                } else if (currentProgress < 95) {
+                    progressIncrement = 0.1 + Math.random() * 0.3; // Finalizing
+                    statusText = 'Finalizing...';
+                } else {
+                    progressIncrement = 0.05; // Very slow progress near the end
+                    statusText = 'Almost done...';
+                }
+
+                currentProgress = Math.min(currentProgress + progressIncrement, targetProgress);
+
+                // Update progress bar
+                progressFill.style.width = currentProgress + '%';
+                progressText.textContent = Math.round(currentProgress) + '%';
+                progressStats.textContent = `${statusText} (${Math.round(elapsed)}s)`;
+
+                // Dynamic color changes
+                if (currentProgress < 25) {
+                    progressFill.style.background = 'linear-gradient(90deg, #FF9800, #FFB74D)';
+                } else if (currentProgress < 60) {
+                    progressFill.style.background = 'linear-gradient(90deg, #2196F3, #64B5F6)';
+                } else {
+                    progressFill.style.background = 'linear-gradient(90deg, #4CAF50, #81C784)';
+                }
+            }, 150); // Faster updates for smoother animation
+        }
+
+        function completeProgress() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressStats = document.getElementById('progressStats');
+
+            if (progressFill && progressText && progressStats) {
+                progressFill.style.width = '100%';
+                progressText.textContent = '100%';
+                progressFill.style.background = 'linear-gradient(90deg, #4CAF50, #66BB6A)';
+                progressText.textContent = 'Complete!';
+
+                const elapsed = (Date.now() - startTime) / 1000;
+                progressStats.textContent = `Total time: ${Math.round(elapsed)}s`;
+            }
+
+            currentProgress = 100;
+        }
+
+        function resetProgress() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const progressStats = document.getElementById('progressStats');
+
+            if (progressFill && progressText && progressStats) {
+                progressFill.style.width = '0%';
+                progressText.textContent = '';
+                progressStats.textContent = '';
+                progressFill.style.background = '#4CAF50';
+            }
+
+            currentProgress = 0;
+        }
+    </script>
+</body>
+</html>
