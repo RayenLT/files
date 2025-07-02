@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 import json
 import os
 import requests
+import urllib3
 import mimetypes
 from datetime import datetime
 import hashlib
@@ -11,6 +12,8 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import re
+import random
+import base64
 
 # Load environment variables
 load_dotenv()
@@ -42,20 +45,210 @@ session.headers.update({
     'User-Agent': 'Replit-File-Storage/1.0'
 })
 
-# Simple adapter with basic retry logic
+# Separate session for GitHub to apply custom settings
+github_session = requests.Session()
+github_session.headers.update({
+    'Authorization': f'token {GITHUB_TOKEN}',
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'Replit-File-Storage/1.0'
+})
+
+# Apply aggressive bypass configurations to the GitHub session
+github_session.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+github_session.headers['Pragma'] = 'no-cache'
+github_session.headers['Expires'] = '0'
+github_session.verify = False  # Disable SSL verification - CAUTION: potential security risk
+
+# Monkey-patch the adapter to bypass common issues
 adapter = requests.adapters.HTTPAdapter(
     pool_connections=5,
     pool_maxsize=10,
     max_retries=requests.adapters.Retry(
-        total=2,
-        read=1,
-        connect=1,
+        total=3,
+        read=2,
+        connect=2,
         backoff_factor=1.0,
-        status_forcelist=(500, 502, 503, 504)
+        status_forcelist=(500, 502, 503, 504),
     )
 )
+
+# Add custom header generation for enhanced bypass
+def generate_random_headers():
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36"
+    ]
+    return {
+        'User-Agent': random.choice(user_agents),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+    }
+
+def attempt_download_with_strategy(url, strategy):
+    """Attempt download using different bypass strategies"""
+    
+    if strategy == "direct_with_headers":
+        session = requests.Session()
+        session.headers.update(generate_random_headers())
+        session.verify = False
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        return session.get(url, stream=True, allow_redirects=True, timeout=30)
+    
+    elif strategy == "browser_simulation":
+        session = requests.Session()
+        session.headers.update(generate_random_headers())
+        session.headers.update({
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-User': '?1',
+            'Sec-Fetch-Dest': 'document'
+        })
+        session.verify = False
+        
+        # First get the page to establish session
+        try:
+            parsed_url = urllib.parse.urlparse(url)
+            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+            session.get(base_url, timeout=10)
+        except:
+            pass
+        
+        return session.get(url, stream=True, allow_redirects=True, timeout=30)
+    
+    elif strategy == "proxy_rotation":
+        session = requests.Session()
+        session.headers.update(generate_random_headers())
+        session.verify = False
+        
+        # Add proxy headers to simulate different networks
+        session.headers.update({
+            'X-Forwarded-For': f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}",
+            'X-Real-IP': f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}",
+            'X-Originating-IP': f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}",
+            'X-Remote-IP': f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}",
+            'X-Remote-Addr': f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
+        })
+        
+        return session.get(url, stream=True, allow_redirects=True, timeout=30)
+    
+    elif strategy == "cookie_persistence":
+        session = requests.Session()
+        session.headers.update(generate_random_headers())
+        session.verify = False
+        
+        # Extract domain and set up cookies
+        parsed_url = urllib.parse.urlparse(url)
+        domain = parsed_url.netloc
+        
+        # Common bypass cookies
+        session.cookies.set('cf_clearance', base64.b64encode(os.urandom(32)).decode(), domain=domain)
+        session.cookies.set('__cfduid', base64.b64encode(os.urandom(16)).decode(), domain=domain)
+        session.cookies.set('session_id', base64.b64encode(os.urandom(24)).decode(), domain=domain)
+        
+        return session.get(url, stream=True, allow_redirects=True, timeout=30)
+    
+    elif strategy == "referrer_spoofing":
+        session = requests.Session()
+        session.headers.update(generate_random_headers())
+        session.verify = False
+        
+        # Add various referrer headers
+        parsed_url = urllib.parse.urlparse(url)
+        possible_referrers = [
+            f"{parsed_url.scheme}://{parsed_url.netloc}",
+            "https://www.google.com/",
+            "https://www.youtube.com/",
+            "https://twitter.com/",
+            "https://www.facebook.com/",
+            "https://discord.com/"
+        ]
+        
+        session.headers.update({
+            'Referer': random.choice(possible_referrers),
+            'Origin': f"{parsed_url.scheme}://{parsed_url.netloc}"
+        })
+        
+        return session.get(url, stream=True, allow_redirects=True, timeout=30)
+    
+    elif strategy == "token_extraction":
+        session = requests.Session()
+        session.headers.update(generate_random_headers())
+        session.verify = False
+        
+        try:
+            # Try to extract fresh token from the original page
+            parsed_url = urllib.parse.urlparse(url)
+            
+            # For mixdrop and similar services, try to get the file page first
+            if 'mixdrop' in parsed_url.netloc:
+                # Extract file ID from download URL
+                file_id_match = re.search(r'/d/([^/]+)/', url)
+                if file_id_match:
+                    file_id = file_id_match.group(1)
+                    file_page_url = f"https://mixdrop.my/f/{file_id}"
+                    
+                    # Get the file page
+                    page_response = session.get(file_page_url, timeout=10)
+                    if page_response.status_code == 200:
+                        # Look for download links in the page
+                        download_links = re.findall(r'https://[^"\'>\s]+\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)', page_response.text)
+                        if download_links:
+                            # Try the first found download link
+                            new_url = download_links[0]
+                            return session.get(new_url, stream=True, allow_redirects=True, timeout=30)
+            
+            # Generic token extraction attempt
+            page_response = session.get(url.replace('/d/', '/f/').split('?')[0], timeout=10)
+            if page_response.status_code == 200:
+                # Look for any download URLs in the page content
+                download_patterns = [
+                    r'href=["\']([^"\']*download[^"\']*)["\']',
+                    r'src=["\']([^"\']*\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v)[^"\']*)["\']',
+                    r'(https?://[^"\'>\s]+\.(mp4|avi|mkv|mov|wmv|flv|webm|m4v))'
+                ]
+                
+                for pattern in download_patterns:
+                    matches = re.findall(pattern, page_response.text, re.IGNORECASE)
+                    if matches:
+                        for match in matches:
+                            try:
+                                test_url = match[0] if isinstance(match, tuple) else match
+                                if test_url.startswith('http'):
+                                    return session.get(test_url, stream=True, allow_redirects=True, timeout=30)
+                            except:
+                                continue
+        except:
+            pass
+        
+        # Fallback to direct download
+        return session.get(url, stream=True, allow_redirects=True, timeout=30)
+    
+    # Default fallback
+    session = requests.Session()
+    session.headers.update(generate_random_headers())
+    session.verify = False
+    return session.get(url, stream=True, allow_redirects=True, timeout=30)
+
+github_session.headers.update(generate_random_headers())
 session.mount('https://', adapter)
 session.mount('http://', adapter)
+github_session.mount('https://', adapter)
+github_session.mount('http://', adapter)
 
 @app.after_request
 def after_request(response):
@@ -146,15 +339,15 @@ def create_github_release(tag_name, name, description="File storage"):
 
     try:
         print(f"Creating GitHub release: {name}")
-        response = session.post(url, json=data)
-        
+        response = github_session.post(url, json=data)
+
         if response.status_code == 422:
             # Tag already exists, try with timestamp
             print("Tag exists, creating unique tag...")
             tag_name = f"{tag_name}-{int(time.time() * 1000)}"
             data['tag_name'] = tag_name
-            response = session.post(url, json=data)
-        
+            response = github_session.post(url, json=data)
+
         if response.status_code == 401:
             raise Exception("GitHub authentication failed - check your token")
         elif response.status_code == 403:
@@ -169,7 +362,7 @@ def create_github_release(tag_name, name, description="File storage"):
             except:
                 pass
             raise Exception(f"GitHub validation error: {error_detail}")
-        
+
         response.raise_for_status()
         print(f"GitHub release created successfully (ID: {response.json().get('id')})")
         return response.json()
@@ -183,16 +376,16 @@ def upload_file_to_release(release_id, filename, file_content, content_type):
 
     try:
         print(f"Uploading file to GitHub: {filename} ({len(file_content)} bytes)")
-        
+
         # Simple direct upload without complex session handling
         headers = {
             'Authorization': f'token {GITHUB_TOKEN}',
             'Content-Type': content_type,
             'Accept': 'application/vnd.github.v3+json'
         }
-        
+
         print("Starting upload...")
-        
+
         # Direct upload using requests.post
         response = requests.post(
             url, 
@@ -200,9 +393,9 @@ def upload_file_to_release(release_id, filename, file_content, content_type):
             data=file_content, 
             headers=headers
         )
-        
+
         print(f"Upload completed with status: {response.status_code}")
-        
+
         if response.status_code == 401:
             raise Exception("GitHub authentication failed during upload")
         elif response.status_code == 403:
@@ -219,11 +412,11 @@ def upload_file_to_release(release_id, filename, file_content, content_type):
             raise Exception("File too large for GitHub (max 2GB)")
         elif response.status_code >= 500:
             raise Exception("GitHub server error - please try again later")
-        
+
         response.raise_for_status()
         print(f"File uploaded successfully to GitHub")
         return response.json()
-        
+
     except requests.exceptions.RequestException as e:
         status_code = getattr(e.response, 'status_code', 'unknown') if hasattr(e, 'response') and e.response else 'unknown'
         raise Exception(f"GitHub upload failed: {str(e)} (Status: {status_code})")
@@ -315,15 +508,43 @@ def extract_filename_from_url(url, response_headers, content_type):
 def download_and_upload_to_github(url, file_id):
     try:
         print(f"Starting download from: {url}")
-        # Download file with no timeout restrictions
-        response = session.get(url, stream=True)
-        response.raise_for_status()
 
+        # Multiple bypass strategies
+        bypass_strategies = [
+            "direct_with_headers",
+            "browser_simulation",
+            "proxy_rotation",
+            "cookie_persistence",
+            "referrer_spoofing",
+            "token_extraction"
+        ]
+
+        response = None
+        last_error = None
+
+        for strategy in bypass_strategies:
+            try:
+                print(f"Attempting strategy: {strategy}")
+                response = attempt_download_with_strategy(url, strategy)
+                if response and response.status_code == 200:
+                    print(f"Success with strategy: {strategy}")
+                    break
+            except Exception as e:
+                print(f"Strategy {strategy} failed: {str(e)}")
+                last_error = e
+                continue
+
+        if not response or response.status_code != 200:
+            raise Exception(f"All bypass strategies failed. Last error: {last_error}")
+
+        print("Download successful, proceeding with upload...")
+
+        # Extract content type and filename immediately after successful download
         content_type = response.headers.get('content-type', 'application/octet-stream')
         filename = extract_filename_from_url(url, response.headers, content_type)
         print(f"Detected filename: {filename}")
 
-        # Get file size if available
+        # Check Content-Length if available
         content_length = response.headers.get('content-length')
         if content_length:
             total_size = int(content_length)
@@ -332,19 +553,19 @@ def download_and_upload_to_github(url, file_id):
             total_size = None
             print("File size unknown")
 
-        # Download content with minimal progress reporting to avoid blocking
+        # Buffer the content
         file_content = b''
         downloaded_size = 0
-        chunk_size = 1024 * 1024  # 1MB chunks for better performance
+        chunk_size = 1024 * 1024  # 1MB chunks
         last_report = 0
-        
+
         print("Downloading file...")
         for chunk in response.iter_content(chunk_size=chunk_size):
             if chunk:
                 file_content += chunk
                 downloaded_size += len(chunk)
-                
-                # Only report progress every 10MB to reduce console spam
+
+                # Report progress every 10MB to reduce console spam
                 if downloaded_size - last_report >= 10 * 1024 * 1024:
                     mb_downloaded = downloaded_size / (1024 * 1024)
                     if total_size:
@@ -356,7 +577,7 @@ def download_and_upload_to_github(url, file_id):
 
         print(f"Download complete: {len(file_content)} bytes ({len(file_content) / (1024*1024):.1f} MB)")
 
-        # Check file size limits (GitHub has 2GB limit)
+        # File size limits
         if len(file_content) > 2 * 1024 * 1024 * 1024:  # 2GB
             raise Exception("File too large for GitHub (maximum 2GB)")
 
@@ -366,7 +587,7 @@ def download_and_upload_to_github(url, file_id):
 
         print("Creating GitHub release...")
         release = create_github_release(tag_name, release_name)
-        
+
         print("Uploading file to GitHub...")
         asset = upload_file_to_release(release['id'], filename, file_content, content_type)
 
@@ -390,7 +611,7 @@ def download_and_upload_to_github(url, file_id):
 
 def delete_github_release(release_id):
     url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/{release_id}"
-    response = session.delete(url)
+    response = github_session.delete(url)
     response.raise_for_status()
 
 @app.route('/')
@@ -548,4 +769,9 @@ def delete_link(link_id):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    except Exception as e:
+        print(f"Application error: {e}")
+        import traceback
+        traceback.print_exc()
